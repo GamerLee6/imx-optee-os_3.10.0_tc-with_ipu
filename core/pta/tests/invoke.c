@@ -16,6 +16,7 @@
 #include <types_ext.h>
 
 #include "misc.h"
+#include "get_task_info.h"
 
 #define TA_NAME		"invoke_tests.pta"
 
@@ -434,6 +435,10 @@ static TEE_Result invoke_command(void *pSessionContext __unused,
 		return core_lockdep_tests(nParamTypes, pParams);
 	case PTA_INVOKE_TEST_CMD_AES_PERF:
 		return core_aes_perf_tests(nParamTypes, pParams);
+	case PTA_INVOKE_TESTS_CMD_GET_TASK_INFO:
+		DMSG("PTA GET_TASK_INFO Command Invoked.");
+		return get_task_info(nParamTypes, pParams);
+
 	default:
 		break;
 	}

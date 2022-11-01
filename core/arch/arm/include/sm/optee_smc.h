@@ -596,4 +596,124 @@
 	((((ret) & OPTEE_SMC_RETURN_RPC_PREFIX_MASK) == \
 		OPTEE_SMC_RETURN_RPC_PREFIX)))
 
+/**
+ * IPU_DUMP_REG
+ * 
+ * Dump IPU reigisters from the SW
+ */
+#define OPTEE_SMC_FUNCID_IPU_DUMP_REG 33
+#define OPTEE_SMC_IPU_DUMP_REG \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_IPU_DUMP_REG)
+
+/**
+ * IPU_INIT_CHANNEL
+ * 
+ * Initilize IPU CSI_PRP_ENC_MEM channel.
+ * 
+ * Parameter arrangement:
+ * a1 - in_width
+ * a2 - in_height
+ * a3 - in_pixel_fmt
+ * a4 - out_width
+ * a5 - out_height
+ * a6 - out_pixel_fmt
+ * a7 - mipi_id
+*/
+#define OPTEE_SMC_FUNCID_IPU_INIT_CHANNEL 34
+#define OPTEE_SMC_IPU_INIT_CHANNEL \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_IPU_INIT_CHANNEL)
+
+/**
+ * IPU_INIT_CHANNEL_BUFFER
+ * 
+ * Initilize IPU CSI_PRP_ENC_MEM channel buffer.
+ * 
+ * Parameter arrangement:
+ * a1 - pixel_fmt
+ * a2 - width
+ * a3 - height
+ * a4 - stride
+ * a5 - phyaddr_0
+ * a6 - phyaddr_1
+*/
+#define OPTEE_SMC_FUNCID_IPU_INIT_CHANNEL_BUFFER 35
+#define OPTEE_SMC_IPU_INIT_CHANNEL_BUFFER \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_IPU_INIT_CHANNEL_BUFFER)
+
+/**
+ * IPU_ENABLE_CHANNEL
+ * 
+ * Enable IPU CSI_PRP_ENC_MEM channel from the SW
+ */
+#define OPTEE_SMC_FUNCID_IPU_ENABLE_CHANNEL 36
+#define OPTEE_SMC_IPU_ENABLE_CHANNEL \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_IPU_ENABLE_CHANNEL)
+
+/**
+ * IPU_UPDATE_CHANNEL_BUFFER
+ * 
+ * Update IPU CSI_PRP_ENC_MEM channel buffer.
+ * 
+ * Parameter arrangement:
+ * a1 - bufNum
+ * a2 - phyaddr
+*/
+#define OPTEE_SMC_FUNCID_IPU_UPDATE_CHANNEL_BUFFER 37
+#define OPTEE_SMC_IPU_UPDATE_CHANNEL_BUFFER \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_IPU_UPDATE_CHANNEL_BUFFER)
+
+/**
+ * IPU_SELECT_BUFFER
+ * 
+ * Select IPU CSI_PRP_ENC_MEM channel buffer number 0 or 1.
+ * 
+ * Parameter arrangement:
+ * a1 - bufNum
+*/
+#define OPTEE_SMC_FUNCID_IPU_SELECT_BUFFER 38
+#define OPTEE_SMC_IPU_SELECT_BUFFER \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_IPU_SELECT_BUFFER)
+
+/**
+ * IPU_ENABLE_CSI
+ * 
+ * Enable IPU CSI1 interface from the SW
+ */
+#define OPTEE_SMC_FUNCID_IPU_ENABLE_CSI 39
+#define OPTEE_SMC_IPU_ENABLE_CSI \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_IPU_ENABLE_CSI)
+
+/**
+ * IPU_DISABLE_CSI
+ * 
+ * Disable IPU CSI1 interface from the SW
+ * 
+ * Parameter arrangement:
+*/
+#define OPTEE_SMC_FUNCID_IPU_DISABLE_CSI 40
+#define OPTEE_SMC_IPU_DISABLE_CSI \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_IPU_DISABLE_CSI)
+
+/**
+ * IPU_DISABLE_CHANNEL
+ * 
+ * Disable IPU CSI_PRP_ENC_MEM channel.
+ * 
+ * Parameter arrangement:
+*/
+#define OPTEE_SMC_FUNCID_IPU_DISABLE_CHANNEL 41
+#define OPTEE_SMC_IPU_DISABLE_CHANNEL \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_IPU_DISABLE_CHANNEL)
+
+/**
+ * IPU_UNINIT_CHANNEL
+ * 
+ * Uninitilize IPU CSI_PRP_ENC_MEM channel.
+ * 
+ * Parameter arrangement:
+*/
+#define OPTEE_SMC_FUNCID_IPU_UNINIT_CHANNEL 42
+#define OPTEE_SMC_IPU_UNINIT_CHANNEL \
+	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_IPU_UNINIT_CHANNEL)
+
 #endif /* OPTEE_SMC_H */

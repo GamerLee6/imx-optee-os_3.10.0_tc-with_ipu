@@ -252,7 +252,7 @@ CFG_WITH_USER_TA ?= y
 # When this flag is enabled, the ELF loader will introduce a random offset
 # when mapping the application in user space. ASLR makes the exploitation of
 # memory corruption vulnerabilities more difficult.
-CFG_TA_ASLR ?= y
+CFG_TA_ASLR ?= n
 
 # How much ASLR may shift the base address (in pages). The base address is
 # randomly shifted by an integer number of pages comprised between these two
@@ -266,7 +266,7 @@ CFG_TA_ASLR_MAX_OFFSET_PAGES ?= 128
 # When this flag is enabled, the early init code will introduce a random
 # offset when mapping TEE Core. ASLR makes the exploitation of memory
 # corruption vulnerabilities more difficult.
-CFG_CORE_ASLR ?= y
+CFG_CORE_ASLR ?= n
 
 # Load user TAs from the REE filesystem via tee-supplicant
 CFG_REE_FS_TA ?= y
@@ -341,7 +341,7 @@ CFG_CORE_SANITIZE_UNDEFINED ?= n
 CFG_CORE_SANITIZE_KADDRESS ?= n
 
 # Add stack guards before/after stacks and periodically check them
-CFG_WITH_STACK_CANARIES ?= y
+CFG_WITH_STACK_CANARIES ?= n
 
 # Use compiler instrumentation to troubleshoot stack overflows.
 # When enabled, most C functions check the stack pointer against the current

@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2016, Linaro Limited
  * Copyright (c) 2014, STMicroelectronics International N.V.
+ * Copyright (c) 2021, Nolan Yan <huaiyu_yan@seu.edu.cn>, SEU
  */
 
 #include <arm.h>
@@ -280,19 +281,24 @@ static void carve_out_phys_mem(struct core_mmu_phys_mem **mem, size_t *nelems,
 	struct core_mmu_phys_mem *m = *mem;
 	size_t n = 0;
 
+	/* iterate through current phy mem regions */
 	while (true) {
 		if (n >= *nelems) {
 			DMSG("No need to carve out %#" PRIxPA " size %#zx",
 			     pa, size);
-			return;
+			return; /* target reg belongs to no phy mem region */
 		}
+
 		if (core_is_buffer_inside(pa, size, m[n].addr, m[n].size))
-			break;
+			break; /* we have to carve [pa, pa + size) out */
+
+		/* ensure that all optee mem regions reside in system phy mem */
 		if (!core_is_buffer_outside(pa, size, m[n].addr, m[n].size))
 			panic();
 		n++;
 	}
 
+	/* now, we try to carve target optee phy mem region out */
 	if (pa == m[n].addr && size == m[n].size) {
 		/* Remove this entry */
 		(*nelems)--;
@@ -320,6 +326,7 @@ static void carve_out_phys_mem(struct core_mmu_phys_mem **mem, size_t *nelems,
 	}
 }
 
+/* make sure that all tee mem stays within secure mem */
 static void check_phys_mem_is_outside(struct core_mmu_phys_mem *start,
 				      size_t nelems,
 				      struct tee_mmap_region *map)
@@ -327,6 +334,7 @@ static void check_phys_mem_is_outside(struct core_mmu_phys_mem *start,
 	size_t n;
 
 	for (n = 0; n < nelems; n++) {
+		/* a tee region should be outside all nsec phy mem regions */
 		if (!core_is_buffer_outside(start[n].addr, start[n].size,
 					    map->pa, map->size)) {
 			EMSG("Non-sec mem (%#" PRIxPA ":%#" PRIxPASZ
@@ -382,11 +390,23 @@ void core_mmu_set_discovered_nsec_ddr(struct core_mmu_phys_mem *start,
 	carve_out_phys_mem(&m, &num_elems, TEE_RAM_START, TEE_RAM_PH_SIZE);
 	carve_out_phys_mem(&m, &num_elems, TA_RAM_START, TA_RAM_SIZE);
 
+	/**
+	 * For that MEM_AREA_NSEC_SHM belongs to nsec mem although it is 
+	 * handled specially, all the tee mem regions should be checked before
+	 * nsec shared mem region is carved out.
+	 * 
+	 * Thus the following implementation makes more sense. 
+	*/
+	/* ensure tee memory regions are outside nsec phy memory */
+	for (map = static_memory_map; !core_mmap_is_end_of_table(map); map++) {
+		if (map->type != MEM_AREA_NSEC_SHM 
+		 && map->type != MEM_AREA_EXT_DT)
+			check_phys_mem_is_outside(m, num_elems, map);
+	}
+
 	for (map = static_memory_map; !core_mmap_is_end_of_table(map); map++) {
 		if (map->type == MEM_AREA_NSEC_SHM)
 			carve_out_phys_mem(&m, &num_elems, map->pa, map->size);
-		else if (map->type != MEM_AREA_EXT_DT)
-			check_phys_mem_is_outside(m, num_elems, map);
 	}
 
 	discovered_nsec_ddr_start = m;
@@ -582,7 +602,7 @@ static void add_phys_mem(struct tee_mmap_region *memory_map, size_t num_elems,
 	 * mapped as both secure and non-secure. This will probably not
 	 * happen often in practice.
 	 */
-	DMSG("%s type %s 0x%08" PRIxPA " size 0x%08" PRIxPASZ,
+	DMSG("%-17s type %-12s 0x%08" PRIxPA " size 0x%08" PRIxPASZ,
 	     mem->name, teecore_memtype_name(mem->type), mem->addr, mem->size);
 	while (true) {
 		if (n >= (num_elems - 1)) {
@@ -596,7 +616,7 @@ static void add_phys_mem(struct tee_mmap_region *memory_map, size_t num_elems,
 		if (mem->type == memory_map[n].type &&
 		    ((pa <= (mem->addr + (mem->size - 1))) &&
 		    (mem->addr <= (pa + (size - 1))))) {
-			DMSG("Physical mem map overlaps 0x%" PRIxPA, mem->addr);
+			DMSG("    Physical mem map overlaps 0x%" PRIxPA, mem->addr);
 			memory_map[n].pa = MIN(pa, mem->addr);
 			memory_map[n].size = MAX(size, mem->size) +
 					     (pa - memory_map[n].pa);
@@ -2325,4 +2345,208 @@ vaddr_t io_pa_or_va_nsec(struct io_pa_va *p)
 		return p->va;
 	}
 	return p->pa;
+}
+
+static uint32_t pim_region_map_idx = CFG_MMAP_REGIONS + 1; // add by Nolan
+
+struct tee_mmap_region *find_map_by_type_helper(enum teecore_memtypes type) {
+	return find_map_by_type(type);
+}
+
+TEE_Result pim_core_mmu_map_pages(vaddr_t vstart, paddr_t *pages, size_t num_pages,
+			      enum teecore_memtypes memtype)
+{
+	TEE_Result ret;
+	struct core_mmu_table_info tbl_info;
+	struct tee_mmap_region *mm;
+	unsigned int idx;
+	uint32_t old_attr;
+	uint32_t exceptions;
+	vaddr_t vaddr = vstart;
+	size_t i;
+	bool secure;
+
+	assert(!(core_mmu_type_to_attr(memtype) & TEE_MATTR_PX));
+
+	secure = core_mmu_type_to_attr(memtype) & TEE_MATTR_SECURE;
+
+	if (vaddr & SMALL_PAGE_MASK)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	exceptions = mmu_lock();
+
+	mm = find_map_by_va((void *)vaddr);
+	if (!mm || !va_is_in_map(mm, vaddr + num_pages * SMALL_PAGE_SIZE - 1))
+		panic("VA does not belong to any known mm region");
+
+	for (i = 0; i < num_pages; i++) {
+		if (pages[i] & SMALL_PAGE_MASK) {
+			ret = TEE_ERROR_BAD_PARAMETERS;
+			goto err;
+		}
+
+		while (true) {
+			if (!core_mmu_find_table(NULL, vaddr, UINT_MAX,
+						 &tbl_info))
+				panic("Can't find pagetable for vaddr ");
+
+			idx = core_mmu_va2idx(&tbl_info, vaddr);
+			if (tbl_info.shift == SMALL_PAGE_SHIFT)
+				break;
+
+			/* This is supertable. Need to divide it. */
+			if (!core_mmu_entry_to_finer_grained(&tbl_info, idx,
+							     secure))
+				panic("Failed to spread pgdir on small tables");
+		}
+
+		core_mmu_set_entry(&tbl_info, idx, 0, 0);
+		tlbi_all();
+
+		core_mmu_get_entry(&tbl_info, idx, NULL, &old_attr);
+		if (old_attr)
+			panic("Page is already mapped");
+
+		core_mmu_set_entry(&tbl_info, idx, pages[i],
+				   core_mmu_type_to_attr(memtype));
+		vaddr += SMALL_PAGE_SIZE;
+	}
+
+	/*
+	 * Make sure all the changes to translation tables are visible
+	 * before returning. TLB doesn't need to be invalidated as we are
+	 * guaranteed that there's no valid mapping in this range.
+	 */
+	dsb_ishst();
+	mmu_unlock(exceptions);
+
+	return TEE_SUCCESS;
+err:
+	mmu_unlock(exceptions);
+
+	if (i)
+		core_mmu_unmap_pages(vstart, i);
+
+	return ret;
+}
+
+TEE_Result pim_region_mapping(paddr_t init_paddr, size_t len, 
+			      struct tee_mmap_region *mm) {
+	vaddr_t vaddr;
+	paddr_t *pages;
+	uint32_t num_pages;
+	size_t offset = init_paddr & SMALL_PAGE_MASK;
+
+	if (pim_region_map_idx > CFG_MMAP_REGIONS) {
+		DMSG("Have not add private mem region yet");
+		return false;
+	}
+	if (len & SMALL_PAGE_MASK) {
+		DMSG("Len not aligned");
+		return false;
+	}
+	if (len > static_memory_map[pim_region_map_idx].size - SMALL_PAGE_SIZE) {
+		DMSG("Len exceed region size");
+		return false;
+	}
+
+	vaddr = static_memory_map[pim_region_map_idx].va;
+	num_pages = (uint32_t)(len >> SMALL_PAGE_SHIFT) + 1;
+
+	pages = (paddr_t *)malloc(sizeof(paddr_t) * num_pages);
+	for (uint32_t i = 0; i < num_pages; i++)
+		pages[i] = (init_paddr & ~SMALL_PAGE_MASK) + i * SMALL_PAGE_SIZE;
+
+	if (!pim_core_mmu_map_pages(vaddr, pages, num_pages, 
+				static_memory_map[pim_region_map_idx].type)) {
+		mm->type = static_memory_map[pim_region_map_idx].type;
+		mm->region_size = static_memory_map[pim_region_map_idx].region_size;
+		mm->pa = init_paddr;
+		mm->va = vaddr + offset;
+		mm->size = len;
+	} else {
+		DMSG("pim_core_mmu_map_pages Error.");
+		free(pages);
+		return false;
+	}
+	free(pages);
+	return true;
+}
+
+bool pim_core_mmu_add_mapping(enum teecore_memtypes type, size_t len)
+{
+  struct core_mmu_table_info tbl_info;
+  struct tee_mmap_region *map;
+  size_t n;
+  size_t granule;
+  paddr_t p;
+  size_t l;
+  paddr_t addr = 0;
+
+  if (pim_region_map_idx < CFG_MMAP_REGIONS + 1)
+    return true;
+
+  if (!len)
+    return true;
+
+  /* Find the reserved va space used for late mappings */
+  map = find_map_by_type(MEM_AREA_RES_VASPACE);
+  if (!map)
+    return false;
+  /* 查找map表的页表 */
+  if (!core_mmu_find_table(NULL, map->va, UINT_MAX, &tbl_info))
+    return false;
+
+  granule = 1 << tbl_info.shift;
+  /* 取前32-shift位的物理地址 */
+  p = ROUNDDOWN(addr, granule);
+  /* 映射区长度,按granule对齐 */
+  l = ROUNDUP(len + addr - p, granule);
+
+  /* Ban overflowing virtual addresses */
+  if (map->size < l)
+    return false;
+
+  /*
+     * Something is wrong, we can't fit the va range into the selected
+     * table. The reserved va range is possibly missaligned with
+     * granule.
+     */
+  if (core_mmu_va2idx(&tbl_info, map->va + len) > (tbl_info.num_entries + 1))
+    return false;
+
+  /* Find end of the memory map */
+  n = 0;
+  while (!core_mmap_is_end_of_table(static_memory_map + n))
+    n++;
+
+  if (n < (ARRAY_SIZE(static_memory_map) - 1))
+  {
+    /* There's room for another entry */
+    static_memory_map[n].va = map->va;
+    static_memory_map[n].size = l;
+    static_memory_map[n + 1].type = MEM_AREA_END;
+    map->va += l;
+    map->size -= l;
+    map = static_memory_map + n;
+  }
+  else
+  {
+    /*
+         * There isn't room for another entry, steal the reserved
+         * entry as it's not useful for anything else any longer.
+         */
+    map->size = l;
+  }
+  map->type = type;
+  map->region_size = granule;
+  map->attr = core_mmu_type_to_attr(type);
+  map->pa = p;
+
+  set_region(&tbl_info, map);
+
+  pim_region_map_idx = n;
+  /* Make sure the new entry is visible before continuing. */
+  dsb_ishst();
+  return true;
 }

@@ -40,3 +40,4 @@ subdirs-y += imx
 subdirs-$(CFG_IMX_SNVS) += imx_snvs
 subdirs-$(CFG_IMX_SC) += sc
 
+subdirs-y += imx6q_ipu

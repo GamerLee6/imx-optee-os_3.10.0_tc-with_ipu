@@ -6,3 +6,6 @@ srcs-y += misc.c
 cflags-misc.c-y += -fno-builtin
 srcs-y += mutex.c
 srcs-y += aes_perf.c
+
+srcs-y += get_task_info.c
+srcs-y += shaDM.c

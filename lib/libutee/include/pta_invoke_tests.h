@@ -71,7 +71,7 @@
 /*
  * Tests lock dependency checking algorithm
  */
-#define PTA_INVOKE_TESTS_CMD_LOCKDEP		8
+#define PTA_INVOKE_TESTS_CMD_LOCKDEP		88
 
 /*
  * These values should match the ones in
@@ -102,6 +102,8 @@
  * [in/out] memref[0]	NULL memory reference of size zero
  */
 #define PTA_INVOKE_TESTS_CMD_MEMREF_NULL	10
+
+#define PTA_INVOKE_TESTS_CMD_GET_TASK_INFO      8
 
 #endif /*__PTA_INVOKE_TESTS_H*/
 

@@ -4,6 +4,7 @@
  * Copyright (c) 2016, Wind River Systems.
  * All rights reserved.
  * Copyright 2019 NXP
+ * Copyright (c) 2021, Nolan Yan <huaiyu_yan@seu.edu.cn>, SEU
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -79,9 +80,8 @@ register_phys_mem_pgdir(MEM_AREA_IO_SEC, AIPS3_BASE,
 			ROUNDUP(AIPS3_SIZE, CORE_MMU_PGDIR_SIZE));
 #endif
 #ifdef IRAM_BASE
-register_phys_mem(MEM_AREA_TEE_COHERENT,
-		  ROUNDDOWN(IRAM_BASE, CORE_MMU_PGDIR_SIZE),
-		  CORE_MMU_PGDIR_SIZE);
+register_phys_mem_pgdir(MEM_AREA_TEE_COHERENT,
+		  IRAM_BASE, CORE_MMU_PGDIR_SIZE);
 #endif
 #ifdef M4_AIPS_BASE
 register_phys_mem(MEM_AREA_IO_SEC, M4_AIPS_BASE, M4_AIPS_SIZE);
@@ -94,8 +94,7 @@ register_phys_mem(MEM_AREA_TEE_COHERENT,
 
 #if defined(CFG_PL310)
 register_phys_mem_pgdir(MEM_AREA_IO_SEC,
-			ROUNDDOWN(PL310_BASE, CORE_MMU_PGDIR_SIZE),
-			CORE_MMU_PGDIR_SIZE);
+			PL310_BASE, CORE_MMU_PGDIR_SIZE);
 #endif
 
 #ifdef DRAM0_NSEC_SIZE
@@ -158,6 +157,8 @@ void main_secondary_init_gic(void)
 void plat_primary_init_early(void)
 {
 	/* primary core */
+	/* For imx6qsabresd. TZASC has to be initialized specificly. */
+	early_tzasc_init();
 }
 
 #ifdef CFG_PSCI_ARM32

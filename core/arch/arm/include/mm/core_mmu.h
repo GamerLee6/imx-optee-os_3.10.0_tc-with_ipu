@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2016, Linaro Limited
  * Copyright (c) 2014, STMicroelectronics International N.V.
+ * Copyright (c) 2021, Nolan Yan <huaiyu_yan@seu.edu.cn>, SEU
  */
 #ifndef CORE_MMU_H
 #define CORE_MMU_H
@@ -219,9 +220,9 @@ struct core_mmu_phys_mem {
 
 /* Same as register_phys_mem() but with PGDIR_SIZE granularity */
 #define register_phys_mem_pgdir(type, addr, size) \
-	register_phys_mem(type, ROUNDDOWN(addr, CORE_MMU_PGDIR_SIZE), \
-		ROUNDUP(size + addr - ROUNDDOWN(addr, CORE_MMU_PGDIR_SIZE), \
-			CORE_MMU_PGDIR_SIZE))
+	__register_memory(#addr, (type), (ROUNDDOWN(addr, CORE_MMU_PGDIR_SIZE)),\
+		(ROUNDUP(size + addr - ROUNDDOWN(addr, CORE_MMU_PGDIR_SIZE), \
+		CORE_MMU_PGDIR_SIZE)), phys_mem_map)
 
 #ifdef CFG_SECURE_DATA_PATH
 #define register_sdp_mem(addr, size) \
@@ -653,6 +654,17 @@ void map_memarea_sections(const struct tee_mmap_region *mm, uint32_t *ttb);
  */
 bool core_mmu_nsec_ddr_is_defined(void);
 
+/**
+ * Reserve necessary physical memory regions for optee 
+ * 	MEM_AREA_TEE_RAM
+ * 	MEM_AREA_TA_RAM
+ * 	MEM_AREA_NSEC_SHM
+ * by carving out these phy mem regions from the system main memory whose info
+ * is extracted from dtb.
+ * 
+ * @param: start	array of detected phy memory regions
+ * @param: nelems	total number of memory regions
+*/
 void core_mmu_set_discovered_nsec_ddr(struct core_mmu_phys_mem *start,
 				      size_t nelems);
 #endif
@@ -677,6 +689,15 @@ void core_mmu_set_default_prtn(void);
 
 void core_mmu_init_virtualization(void);
 #endif
+
+/* pim for Process Integrity Measurement */
+TEE_Result pim_core_mmu_map_pages(vaddr_t vstart, paddr_t *pages, 
+                                 size_t num_pages,
+                                 enum teecore_memtypes memtype);
+TEE_Result pim_region_mapping(paddr_t init_paddr, size_t len,
+                              struct tee_mmap_region *mm);
+bool pim_core_mmu_add_mapping(enum teecore_memtypes type , size_t len);
+struct tee_mmap_region *find_map_by_type_helper(enum teecore_memtypes type);
 
 #endif /*__ASSEMBLER__*/
 

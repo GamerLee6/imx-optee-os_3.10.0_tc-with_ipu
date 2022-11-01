@@ -181,6 +181,17 @@ void __weak tee_entry_fast(struct thread_smc_args *args)
 	__tee_entry_fast(args);
 }
 
+extern void fast_smc_ipu_dump_regs(void);
+extern uint32_t fast_smc_ipu_init_channel(struct thread_smc_args *args);
+extern uint32_t fast_smc_ipu_init_channel_buffer(struct thread_smc_args *args);
+extern uint32_t fast_smc_ipu_enable_channel(struct thread_smc_args *args);
+extern uint32_t fast_smc_ipu_update_channel_buffer(struct thread_smc_args *args);
+extern uint32_t fast_smc_ipu_select_buffer(struct thread_smc_args *args);
+extern uint32_t fast_smc_ipu_enable_csi(struct thread_smc_args *args);
+extern uint32_t fast_smc_ipu_disable_csi(struct thread_smc_args *args);
+extern uint32_t fast_smc_ipu_disable_channel(struct thread_smc_args *args);
+extern uint32_t fast_smc_ipu_uninit_channel(struct thread_smc_args *args);
+
 /*
  * If tee_entry_fast() is overridden, it's still supposed to call this
  * function.
@@ -239,6 +250,56 @@ void __tee_entry_fast(struct thread_smc_args *args)
 		tee_entry_vm_destroyed(args);
 		break;
 #endif
+
+        case OPTEE_SMC_IPU_DUMP_REG:
+		IMSG("Fast SMC OPTEE_SMC_IPU_DUMP_REG");
+		fast_smc_ipu_dump_regs();
+		break;
+
+	case OPTEE_SMC_IPU_INIT_CHANNEL:
+		IMSG("Fast SMC OPTEE_SMC_IPU_INIT_CHANNEL");
+		fast_smc_ipu_init_channel(args);
+		break;
+
+	case OPTEE_SMC_IPU_INIT_CHANNEL_BUFFER:
+		IMSG("Fast SMC OPTEE_SMC_IPU_INIT_CHANNEL_BUFFER");
+		fast_smc_ipu_init_channel_buffer(args);
+		break;
+
+	case OPTEE_SMC_IPU_ENABLE_CHANNEL:
+		IMSG("Fast SMC OPTEE_SMC_IPU_ENABLE_CHANNEL");
+		fast_smc_ipu_enable_channel(args);
+		break;
+
+	case OPTEE_SMC_IPU_UPDATE_CHANNEL_BUFFER:
+		IMSG("Fast SMC OPTEE_SMC_IPU_UPDATE_CHANNEL_BUFFER");
+		fast_smc_ipu_update_channel_buffer(args);
+		break;
+	
+	case OPTEE_SMC_IPU_SELECT_BUFFER:
+		IMSG("Fast SMC OPTEE_SMC_IPU_SELECT_BUFFER");
+		fast_smc_ipu_select_buffer(args);
+		break;
+	
+	case OPTEE_SMC_IPU_ENABLE_CSI:
+		IMSG("Fast SMC OPTEE_SMC_IPU_ENABLE_CSI");
+		fast_smc_ipu_enable_csi(args);
+		break;
+	
+	case OPTEE_SMC_IPU_DISABLE_CSI:
+		IMSG("Fast SMC OPTEE_SMC_IPU_DISABLE_CSI");
+		fast_smc_ipu_disable_csi(args);
+		break;
+
+	case OPTEE_SMC_IPU_DISABLE_CHANNEL:
+		IMSG("Fast SMC OPTEE_SMC_IPU_DISABLE_CHANNEL");
+		fast_smc_ipu_disable_channel(args);
+		break;
+
+	case OPTEE_SMC_IPU_UNINIT_CHANNEL:
+		IMSG("Fast SMC OPTEE_SMC_IPU_UNINIT_CHANNEL");
+		fast_smc_ipu_uninit_channel(args);
+		break;
 
 	default:
 		args->a0 = OPTEE_SMC_RETURN_UNKNOWN_FUNCTION;

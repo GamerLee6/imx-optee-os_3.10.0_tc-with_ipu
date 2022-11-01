@@ -3,3 +3,8 @@ cscope.*
 out
 .cproject
 .project
+
+uTee
+build.sh
+settings.json
+.gitignore

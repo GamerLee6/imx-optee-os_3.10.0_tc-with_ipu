@@ -64,5 +64,8 @@ void dt_debug(const char *node_str, const char *prop);
 void dt_overwrite(const char *node_str, const char *prop_str,
 		  const char *overw_str, uint32_t size_prop);
 #endif
+
+void early_tzasc_init(void);
+
 #endif /* __ASSEMBLER__ */
 #endif
